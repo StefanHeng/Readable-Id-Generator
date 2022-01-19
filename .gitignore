@@ -131,3 +131,6 @@ dmypy.json
 
 # My
 .idea/
+build/
+dist/
+.DS_Store

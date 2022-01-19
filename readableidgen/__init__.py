@@ -28,8 +28,7 @@ class IdGen:
     def __init__(
             self,
             adjs: list[str] = None, nouns: list[str] = None,
-            # Penalize longer phrases quadratically
-            fn: Callable[[np.ndarray], np.ndarray] = lambda lens: 1 / np.square(lens),
+            fn: Callable[[np.ndarray], np.ndarray] = lambda lens: 1 / np.square(lens),  # Penalize quadratically
             verbose=False
     ):
         """
@@ -51,12 +50,7 @@ class IdGen:
         self.lens = np.concatenate((lens_noun, (lens_adj + lens_noun).flatten()))  # Lengths of A + A * N
         self.n_opns = self.lens.size  # Total possible words
 
-        # self.probs = 1 / np.square(self.lens)
-        ic(self.lens.dtype)
         self.probs = fn(self.lens).astype(float)
-        ic(self.probs[self.probs < 0])
-        ic(self.probs)
-        ic(self.probs.max() / self.probs.min())
         self.probs /= self.probs.sum()  # Normalize
 
         self.verbose = verbose
@@ -91,7 +85,7 @@ if __name__ == '__main__':
     from icecream import ic
 
     np.random.seed(77)
-    n = 100
+    n = 20
 
     def sanity_check():
         ig = IdGen(verbose=True)
