@@ -13,7 +13,7 @@ setup(
     description=DESCRIPTION,
     long_description=LONG_DESCRIPTION,
     url='https://github.com/StefanHeng/Readable-Id-Generator',
-    download_url='https://github.com/StefanHeng/Readable-Id-Generator/archive/refs/tags/v0.0.1.tar.gz',
+    download_url='https://github.com/StefanHeng/Readable-Id-Generator/archive/refs/tags/v0.1.tar.gz',
     packages=find_packages(),
     install_requires=['colorama', 'numpy'],
     keywords=['python', 'id', 'generator', 'nlp'],
