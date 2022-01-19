@@ -1,6 +1,22 @@
+from typing import Iterator, Callable
+
 import numpy as np
 
 from util import *
+
+
+class Mappings:
+    """
+    Functions that maps length to weights of being drawn in `IdGen`
+
+    Always penalize longer sequences
+    """
+    @staticmethod
+    def LARGE(lens):
+        """
+        Ratio between shortest & longest sequence ~1e17
+        """
+        return np.exp(lens.mean() - lens)
 
 
 class IdGen:
@@ -9,31 +25,41 @@ class IdGen:
 
     Opinionated - Words of shorter length are more likely to be sampled
     """
-    def __init__(self):
-        self.adjs = load_corpus('adjectives.txt')
-        self.nouns = load_corpus('nouns.txt')
-        self.vocab = self.adjs + self.nouns
+    def __init__(
+            self,
+            adjs: list[str] = None, nouns: list[str] = None,
+            # Penalize longer phrases quadratically
+            fn: Callable[[np.ndarray], np.ndarray] = lambda lens: 1 / np.square(lens),
+            verbose=False
+    ):
+        """
+        :param adjs: Corpus for adjectives
+        :param nouns: Corpus for nouns
+        :param fn: Penalization function, mapping the length of each phrase to its weight
+        :param verbose: If True, each vocabulary generation call logged to console
+
+        .. note:: If not given, internal dictionary is loaded
+        """
+        self.adjs = load_corpus('adjectives.txt') if adjs is None else adjs
+        self.nouns = load_corpus('nouns.txt') if nouns is None else nouns
         self.n_adj, self.n_noun = len(self.adjs), len(self.nouns)
         self.dec_adj = {i: wd for i, wd in enumerate(self.adjs)}
         self.dec_noun = {i: wd for i, wd in enumerate(self.nouns)}
         # length A
         lens_adj = np.fromiter((len(wd) for wd in self.adjs), dtype=int, count=len(self.adjs)).reshape(-1, 1)
         lens_noun = np.fromiter((len(wd) for wd in self.nouns), dtype=int, count=len(self.nouns))  # Length N
-        lens_pair = (lens_adj + lens_noun).flatten()
         self.lens = np.concatenate((lens_noun, (lens_adj + lens_noun).flatten()))  # Lengths of A + A * N
         self.n_opns = self.lens.size  # Total possible words
 
-        ic(self.adjs[:5], self.nouns[:5])
-        ic(self.lens.shape)
-        idx_adj, idx_noun = 1511, 2023
-        ic(lens_pair.shape)
-        ic(lens_pair.shape, lens_pair[idx_adj * len(self.nouns) + idx_noun], self.adjs[idx_adj], self.nouns[idx_noun])
-        idx_ = idx_adj * len(self.nouns) + idx_noun
-        ic(idx_, self.idx2wd(idx_))
-
-        self.probs = 1 / np.square(self.lens)  # Penalize by phrase length, quadratically
+        # self.probs = 1 / np.square(self.lens)
+        ic(self.lens.dtype)
+        self.probs = fn(self.lens).astype(float)
+        ic(self.probs[self.probs < 0])
+        ic(self.probs)
+        ic(self.probs.max() / self.probs.min())
         self.probs /= self.probs.sum()  # Normalize
-        ic(self.probs[:20], self.probs[-20:], self.probs.shape)
+
+        self.verbose = verbose
 
     def idx2wd(self, idx: int) -> str:
         if idx < self.n_noun:
@@ -43,11 +69,13 @@ class IdGen:
             idx_adj, idx_noun = idx // self.n_noun, idx % self.n_noun
             return f'{self.dec_adj[idx_adj]}-{self.dec_noun[idx_noun]}'
 
-    def __call__(self, sz: int = 2**12, sort=True) -> Iterable[str]:
+    def __call__(self, sz: int = 2**12, sort=True) -> Iterator[str]:
         """
         :param sz: Vocabulary size
         :param sort: If true, words are ordered in ascending order of length
         """
+        if self.verbose:
+            log(f'Creating random word dictionary of size {logi(sz)}, on corpus of {logi(self.n_opns)} options... ')
         if sz > self.n_opns:
             raise ValueError(f'Vocabulary size too large: got {sz}, expect <={self.n_opns}'
                              f' - Consider increasing corpus size')
@@ -57,15 +85,26 @@ class IdGen:
             idxs = idxs[np.argsort(lens)]
         for i in idxs:
             yield self.idx2wd(i)
-            # ic(idxs_, 'sort')
-        # ic(idxs)
 
 
 if __name__ == '__main__':
     from icecream import ic
 
     np.random.seed(77)
+    n = 100
 
-    ig = IdGen()
-    vocab = list(ig())
-    ic(vocab[:20], vocab[-20:])
+    def sanity_check():
+        ig = IdGen(verbose=True)
+        vocab = list(ig())
+        assert len(vocab) == len(set(vocab))
+        ic(type(ig()))
+        ic(vocab[:n], vocab[-n:], np.array([len(wd) for wd in vocab]).mean())
+    sanity_check()
+
+    def explore_fn():
+        # ig_ = IdGen(fn=lambda lens: 1 / (lens**3))
+        # ig_ = IdGen(fn=lambda lens: (lens.max()+1 - lens) ** 8)
+        ig_ = IdGen(fn=Mappings.LARGE)
+        vocab_ = list(ig_())
+        ic(vocab_[:n], vocab_[-n:], np.array([len(wd) for wd in vocab_]).mean())
+    explore_fn()

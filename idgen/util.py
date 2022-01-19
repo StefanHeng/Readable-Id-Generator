@@ -1,8 +1,7 @@
 import os
-import itertools
-from collections.abc import Iterable
-from typing import TypeVar, Callable
-import concurrent.futures
+from datetime import datetime
+
+import colorama
 
 
 def load_corpus(fnm, path='corpus') -> list[str]:
@@ -10,24 +9,52 @@ def load_corpus(fnm, path='corpus') -> list[str]:
         return [wd.strip() for wd in f.readlines()]
 
 
-T = TypeVar('T')
-K = TypeVar('K')
+def now(as_str=True, sep=':'):
+    d = datetime.now()
+    return d.strftime(f'%Y-%m-%d %H{sep}%M{sep}%S') if as_str else d  # Considering file output path
 
 
-def join_its(*its: Iterable[Iterable[T]]) -> Iterable[T]:
-    out = itertools.chain()
-    for it in its:
-        out = itertools.chain(out, it)
-    return out
-
-
-def conc_map(fn: Callable[[T], K], it: Iterable[T]) -> Iterable[K]:
+def log(s, c: str = 'log', as_str=False):
     """
-    Wrapper for `concurrent.futures.map`
-
-    :param fn: A function
-    :param it: A list of elements
-    :return: Iterator of `lst` elements mapped by `fn` with concurrency
+    Prints `s` to console with color `c`
     """
-    with concurrent.futures.ThreadPoolExecutor() as executor:
-        return executor.map(fn, it)
+    if not hasattr(log, 'reset'):
+        log.reset = colorama.Fore.RESET + colorama.Back.RESET + colorama.Style.RESET_ALL
+    if not hasattr(log, 'd'):
+        log.d = dict(
+            log='',
+            warn=colorama.Fore.YELLOW,
+            error=colorama.Fore.RED,
+            err=colorama.Fore.RED,
+            success=colorama.Fore.GREEN,
+            suc=colorama.Fore.GREEN,
+            info=colorama.Fore.BLUE,
+            i=colorama.Fore.BLUE,
+
+            y=colorama.Fore.YELLOW,
+            yellow=colorama.Fore.YELLOW,
+            red=colorama.Fore.RED,
+            r=colorama.Fore.RED,
+            green=colorama.Fore.GREEN,
+            g=colorama.Fore.GREEN,
+            blue=colorama.Fore.BLUE,
+            b=colorama.Fore.BLUE,
+        )
+    if c in log.d:
+        c = log.d[c]
+    if as_str:
+        return f'{c}{s}{log.reset}'
+    else:
+        print(f'{c}{now()}| {s}{log.reset}')
+
+
+def logs(s, c='log'):
+    return log(s, c=c, as_str=True)
+
+
+def logi(s):
+    """
+    Syntactic sugar for logging `info`
+    """
+    return logs(s, c='i')
+
