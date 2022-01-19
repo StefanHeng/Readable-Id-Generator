@@ -1,6 +1,7 @@
 from typing import Iterator, Callable
 
 import numpy as np
+from numpy.random import default_rng
 
 from util import *
 
@@ -29,13 +30,15 @@ class IdGen:
             self,
             adjs: list[str] = None, nouns: list[str] = None,
             fn: Callable[[np.ndarray], np.ndarray] = lambda lens: 1 / np.square(lens),  # Penalize quadratically
-            verbose=False
+            verbose=False,
+            rng=None
     ):
         """
         :param adjs: Corpus for adjectives
         :param nouns: Corpus for nouns
         :param fn: Penalization function, mapping the length of each phrase to its weight
         :param verbose: If True, each vocabulary generation call logged to console
+        :param rng: Numpy random number generator
 
         .. note:: If not given, internal dictionary is loaded
         """
@@ -54,6 +57,8 @@ class IdGen:
         self.probs /= self.probs.sum()  # Normalize
 
         self.verbose = verbose
+        if rng is None:
+            self.rng = default_rng()
 
     def idx2wd(self, idx: int) -> str:
         if idx < self.n_noun:
@@ -73,7 +78,7 @@ class IdGen:
         if sz > self.n_opns:
             raise ValueError(f'Vocabulary size too large: got {sz}, expect <={self.n_opns}'
                              f' - Consider increasing corpus size')
-        idxs = np.random.choice(self.n_opns, size=sz, replace=False, p=self.probs)
+        idxs = self.rng.choice(self.n_opns, size=sz, replace=False, p=self.probs)
         lens = self.lens[idxs]
         if sort:
             idxs = idxs[np.argsort(lens)]
@@ -84,7 +89,8 @@ class IdGen:
 if __name__ == '__main__':
     from icecream import ic
 
-    np.random.seed(77)
+    # np.random.seed(77)
+    rng = default_rng(77)
     n = 20
 
     def sanity_check():
