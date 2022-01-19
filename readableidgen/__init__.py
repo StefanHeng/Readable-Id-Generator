@@ -3,7 +3,7 @@ from typing import Iterator, Callable
 import numpy as np
 from numpy.random import default_rng
 
-from util import *
+from readableidgen.util import *
 
 
 class Mappings:
@@ -50,7 +50,7 @@ class IdGen:
         # length A
         lens_adj = np.fromiter((len(wd) for wd in self.adjs), dtype=int, count=len(self.adjs)).reshape(-1, 1)
         lens_noun = np.fromiter((len(wd) for wd in self.nouns), dtype=int, count=len(self.nouns))  # Length N
-        self.lens = np.concatenate((lens_noun, (lens_adj + lens_noun).flatten()))  # Lengths of A + A * N
+        self.lens = np.concatenate((lens_noun, (lens_adj + lens_noun).flatten()))  # Length of A + A * N
         self.n_opns = self.lens.size  # Total possible words
 
         self.probs = fn(self.lens).astype(float)
@@ -59,6 +59,8 @@ class IdGen:
         self.verbose = verbose
         if rng is None:
             self.rng = default_rng()
+        else:
+            self.rng = rng
 
     def idx2wd(self, idx: int) -> str:
         if idx < self.n_noun:
@@ -94,7 +96,7 @@ if __name__ == '__main__':
     n = 20
 
     def sanity_check():
-        ig = IdGen(verbose=True)
+        ig = IdGen(verbose=True, rng=rng)
         vocab = list(ig())
         assert len(vocab) == len(set(vocab))
         ic(type(ig()))

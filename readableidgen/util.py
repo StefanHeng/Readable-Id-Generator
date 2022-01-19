@@ -5,7 +5,7 @@ import colorama
 
 
 def load_corpus(fnm, path='corpus') -> list[str]:
-    with open(os.path.join(path, fnm)) as f:
+    with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), path, fnm)) as f:
         return [wd.strip() for wd in f.readlines()]
 
 
